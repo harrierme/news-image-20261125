@@ -16,8 +16,8 @@ python3 main.py
 
 ## What it is
 
-- **48 stories**: 4 illustrated leads, 12 illustrated medium cards and
-  32 numbered briefs — every one happened, or was first reported, on
+- **40 stories**: 4 illustrated leads, 12 illustrated medium cards and
+  24 numbered briefs — every one happened, or was first reported, on
   25 November 2026. Sources and trust labels (CONFIRMED / REPORTED /
   CLAIM / OFFICIAL / FORECAST) are printed on the page.
 - **World map** with numbered pins (1–16) matching the story numbers.
@@ -32,7 +32,7 @@ python3 main.py
 - `main.py` — the entry program (stdlib only): copies `entry.png` to
   `$MAKEFUN_OUTPUT_DIR/entry.png` (or `/output/entry.png`).
 - `render.py` — draws the page from `stories.py` with Pillow.
-- `stories.py` — the 48 researched stories, numbers, timeline and
+- `stories.py` — the 40 researched stories, numbers, timeline and
   date-check lists.
 - `stories.md` — the research notes behind `stories.py`.
 - `entry.png` — the rendered front page (1024×1024, under 1 MiB).

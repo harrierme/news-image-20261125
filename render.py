@@ -67,29 +67,35 @@ def wrap(draw, text, font, max_w):
 
 
 def draw_wrapped(draw, x, y, text, font, max_w, fill, leading=None, max_lines=None,
-                 ellipsis=True):
-    """Draw wrapped text; returns y just below the last line."""
+                 ellipsis=False, warn_label=None):
+    """Draw wrapped text; returns y just below the last line.
+    Never adds an ellipsis: text is shortened in stories.py instead.
+    If it still overflows max_lines, draws the lines that fit and prints a
+    WARNING (with the story label) so the build fails the no-warning gate."""
     if leading is None:
         leading = int(font.size * 1.28)
     lines = wrap(draw, text, font, max_w)
     if max_lines is not None and len(lines) > max_lines:
+        print("WARNING: text overflows max_lines=%d: %s: %r"
+              % (max_lines, warn_label, text), file=sys.stderr)
         lines = lines[:max_lines]
-        if ellipsis:
-            while lines and draw.textlength(lines[-1] + "…", font=font) > max_w:
-                lines[-1] = lines[-1][:-1]
-            lines[-1] = lines[-1].rstrip(" ,.;:") + "…"
     for line in lines:
         draw.text((x, y), line, font=font, fill=fill)
         y += leading
     return y
 
 
-def trunc(draw, text, font, max_w):
+def trunc(draw, text, font, max_w, warn_label=None):
+    """Shorten to one line by dropping whole words from the end.
+    Never adds an ellipsis; prints a WARNING so the story gets rewritten."""
     if draw.textlength(text, font=font) <= max_w:
         return text
-    while text and draw.textlength(text + "…", font=font) > max_w:
-        text = text[:-1]
-    return text.rstrip(" ,.;:") + "…"
+    print("WARNING: one-line text too long, dropping words: %s: %r"
+          % (warn_label, text), file=sys.stderr)
+    words = text.split()
+    while len(words) > 1 and draw.textlength(" ".join(words), font=font) > max_w:
+        words = words[:-1]
+    return " ".join(words)
 
 
 def rrect(draw, box, radius, fill=None, outline=None, width=1):
@@ -154,46 +160,72 @@ def art_asteroid(draw, box):
     x0, y0, x1, y1 = box
     cx, cy = (x0 + x1) // 2, (y0 + y1) // 2
     rx, ry = (x1 - x0) // 3, (y1 - y0) // 3
-    draw.ellipse([cx - rx, cy - ry, cx + rx, cy + ry], fill=(128, 122, 110))
-    for ox, oy, orr, col in [(-rx // 2, -ry // 3, 9, (96, 90, 80)),
-                             (rx // 3, ry // 4, 7, (96, 90, 80)),
-                             (0, -ry // 6, 5, (150, 144, 132)),
-                             (-rx // 4, ry // 2, 6, (110, 104, 94))]:
+    # jagged asteroid polygon (fixed vertices, deterministic)
+    import math
+    radii = [1.00, 0.82, 0.95, 0.78, 0.98, 0.84, 0.92, 0.76, 0.99, 0.86,
+             0.94, 0.80]
+    pts = []
+    for i, rr in enumerate(radii):
+        ang = math.pi * 2 * i / len(radii) - math.pi / 2
+        pts.append((cx + rx * rr * math.cos(ang), cy + ry * rr * math.sin(ang)))
+    draw.polygon(pts, fill=(128, 122, 110), outline=(150, 144, 132))
+    # bright impact-crater rings
+    for ox, oy, orr in [(-rx // 2, -ry // 3, 10), (rx // 3, ry // 4, 8),
+                        (0, -ry // 6, 6)]:
         draw.ellipse([cx + ox - orr, cy + oy - orr, cx + ox + orr, cy + oy + orr],
-                     fill=col)
-    # probe at top right
-    px, py = x1 - 34, y0 + 14
-    draw.rectangle([px - 12, py - 2, px - 4, py + 2], fill=(70, 90, 140))
-    draw.rectangle([px + 4, py - 2, px + 12, py + 2], fill=(70, 90, 140))
-    draw.rectangle([px - 4, py - 5, px + 4, py + 5], fill=(220, 220, 215))
+                     outline=(210, 204, 192), width=2)
+        draw.ellipse([cx + ox - orr + 3, cy + oy - orr + 3,
+                      cx + ox + orr - 3, cy + oy + orr - 3],
+                     fill=(96, 90, 80))
+    # Hera probe, bigger: body + two solar panels
+    px, py = x1 - 36, y0 + 16
+    draw.rectangle([px - 20, py - 2, px - 6, py + 2], fill=(70, 90, 140))
+    draw.rectangle([px + 6, py - 2, px + 20, py + 2], fill=(70, 90, 140))
+    draw.rectangle([px - 6, py - 6, px + 6, py + 6], fill=(220, 220, 215),
+                   outline=(90, 90, 90))
+    draw.ellipse([px - 3, py - 3, px + 3, py + 3], fill=(163, 19, 19))
+    # small Earth disc in the corner
+    ex, ey, er = x0 + 13, y1 - 13, 8
+    draw.ellipse([ex - er, ey - er, ex + er, ey + er], fill=(38, 98, 168))
+    draw.ellipse([ex - er + 2, ey - er + 2, ex + 1, ey + 1], fill=(80, 160, 90))
+    draw.ellipse([ex - 1, ey + 1, ex + er - 2, ey + er - 2], fill=(120, 180, 220))
 
 
 def art_pharma(draw, box):
     x0, y0, x1, y1 = box
     draw.rectangle(box, fill=(232, 240, 236))
-    cx = (x0 + x1) // 2
-    bw = max(9, (x1 - x0) // 7)
-    bh = y1 - y0
-    # bottle
-    top = y0 + bh // 5
-    bot = y1 - bh // 6
-    draw.rectangle([cx - bw, top, cx + bw, bot], fill=(255, 255, 255),
-                   outline=(29, 78, 121), width=2)
-    draw.rectangle([cx - bw + 3, top - 8, cx + bw - 3, top], fill=(29, 78, 121))
-    # label with cross
-    ly = top + (bot - top) // 2 - 6
-    draw.rectangle([cx - bw + 3, ly, cx + bw - 3, ly + 14], fill=(163, 19, 19))
-    draw.rectangle([cx - 2, ly + 3, cx + 2, ly + 11], fill=(255, 255, 255))
-    draw.rectangle([cx - 6, ly + 6, cx + 6, ly + 8], fill=(255, 255, 255))
-    # capsules at the sides
-    capw = max(7, (x1 - x0) // 9)
-    for sgn in (-1, 1):
-        px = cx + sgn * (bw + capw + 5)
-        py = y0 + bh * 2 // 3
-        draw.rounded_rectangle([px - capw, py - 5, px + capw, py + 5], radius=5,
-                               fill=(240, 120, 60))
-        draw.rounded_rectangle([px - capw, py - 5, px, py + 5], radius=5,
-                               fill=(255, 255, 255))
+    # modern glass pharma HQ: tower with lit windows
+    bx0, bx1 = x0 + 10, x0 + 108
+    by0, by1 = y0 + 4, y1 - 18
+    draw.rectangle([bx0, by0, bx1, by1], fill=(29, 78, 121))
+    draw.rectangle([bx0, by0, bx1, by0 + 5], fill=(163, 19, 19))
+    for r in range(3):
+        for c in range(5):
+            wx = bx0 + 6 + c * 18
+            wy = by0 + 11 + r * 11
+            col = (255, 220, 120) if (r + c) % 3 else (180, 210, 230)
+            draw.rectangle([wx, wy, wx + 12, wy + 7], fill=col)
+    # second, shorter tower behind on the right
+    draw.rectangle([bx1 + 6, y0 + 16, bx1 + 34, by1], fill=(46, 98, 140))
+    for r in range(2):
+        for c in range(2):
+            draw.rectangle([bx1 + 11 + c * 12, y0 + 22 + r * 11,
+                            bx1 + 19 + c * 12, y0 + 28 + r * 11],
+                           fill=(255, 220, 120))
+    # big capsule in front
+    cx = (x0 + x1) // 2 + 38
+    cy = y0 + 30
+    draw.rounded_rectangle([cx - 34, cy - 10, cx + 34, cy + 10], radius=10,
+                           fill=(240, 120, 60), outline=(163, 19, 19), width=2)
+    draw.rounded_rectangle([cx - 34, cy - 10, cx, cy + 10], radius=10,
+                           fill=(255, 255, 255))
+    # "$41BN" banner along the bottom
+    draw.rectangle([x0, y1 - 16, x1, y1], fill=(163, 19, 19))
+    fb = font_sans(11, 800)
+    txt = "$41BN"
+    tw = draw.textlength(txt, font=fb)
+    draw.text((x0 + (x1 - x0 - tw) / 2, y1 - 14), txt, font=fb,
+              fill=(255, 255, 255))
 
 
 def art_server(draw, box):
@@ -201,19 +233,22 @@ def art_server(draw, box):
     draw.rectangle(box, fill=(18, 26, 38))
     cx = (x0 + x1) // 2
     rw = (x1 - x0) // 2
+    # v2: 3 racks of 16px starting y0+6, step 20 -> last ends y0+62,
+    # inside the 65px box (the old 20px racks starting y0+14 stepped 26px
+    # and the 3rd rack pierced the box bottom onto the tag row).
     for i in range(3):
-        ry = y0 + 14 + i * 26
-        draw.rectangle([cx - rw, ry, cx + rw, ry + 20], fill=(44, 58, 78),
+        ry = y0 + 6 + i * 20
+        draw.rectangle([cx - rw, ry, cx + rw, ry + 16], fill=(44, 58, 78),
                        outline=(90, 110, 140))
         for j, col in enumerate([(90, 200, 120), (255, 200, 60), (90, 160, 255)]):
-            draw.ellipse([cx - rw + 6 + j * 9, ry + 7, cx - rw + 12 + j * 9, ry + 13],
+            draw.ellipse([cx - rw + 6 + j * 9, ry + 5, cx - rw + 12 + j * 9, ry + 11],
                          fill=col)
-        draw.rectangle([cx + 8, ry + 8, cx + rw - 8, ry + 12], fill=(120, 140, 165))
-    # rising chart
-    pts = [(x0 + 8, y1 - 14), (x0 + 26, y1 - 26), (x0 + 44, y1 - 20),
-           (x0 + 62, y1 - 34), (x1 - 10, y1 - 44)]
+        draw.rectangle([cx + 8, ry + 6, cx + rw - 8, ry + 10], fill=(120, 140, 165))
+    # rising chart, kept between y0+8 and y1-24 (inside the box)
+    pts = [(x0 + 8, y0 + 38), (x0 + 26, y0 + 30), (x0 + 44, y0 + 34),
+           (x0 + 62, y0 + 22), (x1 - 10, y0 + 14)]
     draw.line(pts, fill=(90, 200, 120), width=3)
-    draw.polygon([(x1 - 16, y1 - 50), (x1 - 6, y1 - 44), (x1 - 18, y1 - 38)],
+    draw.polygon([(x1 - 16, y0 + 10), (x1 - 6, y0 + 14), (x1 - 18, y0 + 20)],
                  fill=(90, 200, 120))
 
 
@@ -243,22 +278,24 @@ def art_ship(draw, box):
 
 
 def art_aid(draw, box):
+    # v2: aid truck on a road (was a crate + flag that overflowed the box).
     x0, y0, x1, y1 = box
-    draw.rectangle(box, fill=(238, 232, 216))
-    cx, cy = (x0 + x1) // 2, (y0 + y1) // 2
-    w = x1 - x0
-    # crate
-    cw = w * 0.27
-    draw.rectangle([cx - cw, cy - 8, cx + cw, cy + 30], fill=(176, 138, 78),
-                   outline=(90, 66, 30), width=2)
-    draw.line([(cx - cw, cy + 11), (cx + cw, cy + 11)], fill=(90, 66, 30), width=2)
-    draw.line([(cx, cy - 8), (cx, cy + 30)], fill=(90, 66, 30), width=2)
-    # red cross flag above
-    fw = w * 0.13
-    draw.rectangle([cx - fw, cy - 34, cx + fw, cy - 10], fill=(255, 255, 255),
-                   outline=(163, 19, 19), width=2)
-    draw.rectangle([cx - 3, cy - 30, cx + 3, cy - 14], fill=(163, 19, 19))
-    draw.rectangle([cx - fw + 4, cy - 25, cx + fw - 4, cy - 19], fill=(163, 19, 19))
+    draw.rectangle(box, fill=(178, 214, 232))
+    # road along the bottom
+    draw.rectangle([x0, y1 - 14, x1, y1], fill=(90, 88, 84))
+    draw.line([(x0 + 4, y1 - 7), (x1 - 4, y1 - 7)], fill=(255, 255, 255), width=2)
+    # cargo bed with a red cross
+    draw.rectangle([x0 + 6, y0 + 14, x0 + 34, y1 - 14], fill=(255, 253, 246),
+                   outline=(25, 23, 19), width=2)
+    draw.rectangle([x0 + 17, y0 + 20, x0 + 23, y0 + 34], fill=(163, 19, 19))
+    draw.rectangle([x0 + 13, y0 + 25, x0 + 27, y0 + 29], fill=(163, 19, 19))
+    # cab
+    draw.rectangle([x0 + 34, y0 + 22, x0 + 50, y1 - 14], fill=(29, 78, 121))
+    draw.rectangle([x0 + 38, y0 + 25, x0 + 47, y0 + 31], fill=(178, 214, 232))
+    # wheels
+    for wx in (x0 + 14, x0 + 28, x0 + 42):
+        draw.ellipse([wx - 4, y1 - 17, wx + 4, y1 - 9], fill=(25, 23, 19),
+                     outline=(255, 255, 255))
 
 
 def art_bank(draw, box):
@@ -314,19 +351,25 @@ def art_mine(draw, box):
 
 
 def art_cyber(draw, box):
+    # v2: tanker at sea + red warning triangle + binary rain
+    # (was a shield alone).
     x0, y0, x1, y1 = box
-    draw.rectangle(box, fill=(16, 20, 34))
-    cx, cy = (x0 + x1) // 2, (y0 + y1) // 2
-    f = font_sans(13, 700)
-    for i, txt in enumerate(["01", "10", "01", "11"]):
-        draw.text((x0 + 6 + i * 22, y0 + 6), txt, font=f, fill=(60, 90, 140))
-        draw.text((x0 + 6 + i * 22, y1 - 20), txt, font=f, fill=(60, 90, 140))
-    # shield
-    draw.polygon([(cx, cy - 22), (cx + 20, cy - 14), (cx + 20, cy + 2),
-                  (cx, cy + 18), (cx - 20, cy + 2), (cx - 20, cy - 14)],
-                 fill=(29, 78, 121), outline=(140, 190, 255))
-    draw.rectangle([cx - 3, cy - 6, cx + 3, cy + 4], fill=(255, 255, 255))
-    draw.ellipse([cx - 5, cy - 11, cx + 5, cy - 1], fill=(255, 255, 255))
+    draw.rectangle([x0, y0, x1, y0 + (y1 - y0) // 2], fill=(16, 20, 34))
+    draw.rectangle([x0, y0 + (y1 - y0) // 2, x1, y1], fill=(46, 98, 140))
+    # binary rain
+    f = font_sans(9, 700)
+    for i, txt in enumerate(["01", "10", "11", "01"]):
+        draw.text((x0 + 4 + i * 13, y0 + 3), txt, font=f, fill=(60, 120, 180))
+    # tanker
+    draw.rectangle([x0 + 6, y0 + 30, x1 - 6, y0 + 42], fill=(90, 66, 30))
+    draw.rectangle([x0 + 10, y0 + 22, x0 + 22, y0 + 30], fill=(240, 238, 232))
+    draw.rectangle([x0 + 24, y0 + 26, x0 + 30, y0 + 30], fill=(163, 19, 19))
+    # warning triangle
+    tx, ty = x1 - 22, y0 + 12
+    draw.polygon([(tx, ty - 9), (tx + 10, ty + 8), (tx - 10, ty + 8)],
+                 fill=(255, 200, 60), outline=(163, 19, 19))
+    draw.rectangle([tx - 1, ty - 4, tx + 1, ty + 3], fill=(163, 19, 19))
+    draw.ellipse([tx - 1, ty + 4, tx + 1, ty + 6], fill=(163, 19, 19))
 
 
 def art_oil(draw, box):
@@ -348,23 +391,27 @@ def art_oil(draw, box):
 
 
 def art_gavel(draw, box):
+    # v2: clothes rack + shopping bags + big "$100m" price label
+    # (was a gavel that overflowed the box bottom).
     x0, y0, x1, y1 = box
     draw.rectangle(box, fill=(238, 234, 222))
-    cx, cy = (x0 + x1) // 2, (y0 + y1) // 2
-    w = x1 - x0
-    hw = w * 0.21
-    # gavel head
-    draw.rounded_rectangle([cx - hw, cy - 22, cx + hw, cy - 6], radius=5,
-                           fill=(90, 66, 30))
-    draw.rectangle([cx - hw - 4, cy - 22, cx - hw + 4, cy - 6], fill=(60, 44, 20))
-    draw.rectangle([cx + hw - 4, cy - 22, cx + hw + 4, cy - 6], fill=(60, 44, 20))
-    # handle
-    draw.line([(cx, cy - 6), (cx + 14, cy + 26)], fill=(90, 66, 30), width=5)
-    # sound block
-    draw.rectangle([cx - hw, cy + 26, cx + hw, cy + 34], fill=(120, 96, 60))
-    # dollar tag
-    f = font_serif(22)
-    draw.text((x0 + 6, y0 + 4), "$", font=f, fill=(146, 106, 24))
+    # rack bar
+    draw.rectangle([x0 + 6, y0 + 8, x1 - 6, y0 + 11], fill=(90, 66, 30))
+    draw.line([(x0 + 8, y0 + 11), (x0 + 8, y1 - 8)], fill=(90, 66, 30), width=2)
+    draw.line([(x1 - 8, y0 + 11), (x1 - 8, y1 - 8)], fill=(90, 66, 30), width=2)
+    # hanging clothes
+    for i, col in enumerate([(163, 19, 19), (29, 78, 121), (146, 106, 24)]):
+        hx = x0 + 14 + i * 13
+        draw.rectangle([hx, y0 + 12, hx + 10, y0 + 30], fill=col)
+        draw.line([(hx + 5, y0 + 11), (hx + 5, y0 + 13)], fill=(25, 23, 19), width=2)
+    # shopping bag
+    draw.rectangle([x0 + 8, y1 - 22, x0 + 26, y1 - 8], fill=(255, 255, 255),
+                   outline=(163, 19, 19), width=2)
+    draw.arc([x0 + 12, y1 - 28, x0 + 22, y1 - 18], 180, 360, fill=(163, 19, 19),
+             width=2)
+    # big price label
+    f = font_serif(17)
+    draw.text((x0 + 28, y1 - 24), "$100m", font=f, fill=(146, 106, 24))
 
 
 def art_film(draw, box):
@@ -387,25 +434,28 @@ def art_film(draw, box):
 
 
 def art_ballot(draw, box):
+    # v2: parliament building (columns + dome, Swedish blue-yellow) with a
+    # ballot box in front (was a ballot paper + box that overflowed the top).
     x0, y0, x1, y1 = box
     draw.rectangle(box, fill=(232, 238, 240))
-    cx, cy = (x0 + x1) // 2, (y0 + y1) // 2
-    w = x1 - x0
-    hw = w * 0.24
-    # ballot paper going in
-    draw.polygon([(cx - hw * 0.45, cy - 34), (cx + hw * 0.3, cy - 34),
-                  (cx + hw * 0.05, cy - 8), (cx - hw * 0.65, cy - 8)],
-                 fill=(255, 255, 255), outline=(29, 78, 121))
-    draw.line([(cx - hw * 0.4, cy - 28), (cx + hw * 0.15, cy - 28)],
+    cx = (x0 + x1) // 2
+    # dome
+    draw.pieslice([cx - 12, y0 + 2, cx + 12, y0 + 22], 180, 360,
+                  fill=(29, 78, 121))
+    draw.rectangle([cx - 13, y0 + 11, cx + 13, y0 + 14], fill=(255, 200, 60))
+    # pediment + columns
+    draw.polygon([(x0 + 6, y0 + 18), (x1 - 6, y0 + 18), (cx, y0 + 10)],
+                 fill=(29, 78, 121))
+    for i in range(4):
+        colx = x0 + 10 + i * 11
+        draw.rectangle([colx, y0 + 19, colx + 6, y1 - 16], fill=(255, 253, 246),
+                       outline=(29, 78, 121))
+    draw.rectangle([x0 + 6, y1 - 16, x1 - 6, y1 - 12], fill=(29, 78, 121))
+    # ballot box in front
+    draw.rectangle([cx - 9, y1 - 14, cx + 9, y1 - 3], fill=(255, 200, 60),
+                   outline=(163, 19, 19))
+    draw.line([(cx - 3, y1 - 8), (cx - 1, y1 - 5), (cx + 5, y1 - 11)],
               fill=(163, 19, 19), width=2)
-    draw.line([(cx - hw * 0.4, cy - 22), (cx + hw * 0.05, cy - 22)],
-              fill=(163, 19, 19), width=2)
-    # box
-    draw.rectangle([cx - hw, cy - 8, cx + hw, cy + 30], fill=(29, 78, 121))
-    draw.rectangle([cx - hw - 4, cy - 12, cx + hw + 4, cy - 6], fill=(20, 58, 92))
-    # check mark
-    draw.line([(cx - hw * 0.45, cy + 10), (cx - hw * 0.12, cy + 20),
-               (cx + hw * 0.5, cy - 2)], fill=(255, 255, 255), width=4)
 
 
 def art_blast(draw, box):
@@ -512,13 +562,19 @@ def draw_map(draw, box, pins):
     placed = []
     for n, lon, lat in pins:
         px, py = project(lon, lat, box)
-        # nudge overlapping pins apart (Berlin x2, Washington x2)
+        # nudge overlapping pins apart (Berlin x2, Washington x2, and the
+        # Berlin/Warsaw/Stockholm cluster) — v2: radius 7 / threshold 13 so
+        # the cluster separates, and clamp into the box: the old radius 8 /
+        # threshold 14 nudged pin 15 (Stockholm) three times until it escaped
+        # the map and floated on the section header above.
         for (ox, oy) in placed:
-            if abs(px - ox) < 14 and abs(py - oy) < 14:
+            if abs(px - ox) < 13 and abs(py - oy) < 13:
                 px += 13
                 py -= 10
+        px = min(max(px, x0 + 8), x1 - 8)
+        py = min(max(py, y0 + 8), y1 - 8)
         placed.append((px, py))
-        draw.ellipse([px - 8, py - 8, px + 8, py + 8], fill=RED,
+        draw.ellipse([px - 7, py - 7, px + 7, py + 7], fill=RED,
                      outline=(255, 255, 255), width=1)
         tw = draw.textlength(str(n), font=fnum)
         draw.text((px - tw / 2, py - 6), str(n), font=fnum, fill=(255, 255, 255))
@@ -561,8 +617,14 @@ def render():
     d.line([(M, y + 4), (W - M, y + 4)], fill=RULE, width=1)
     y += 9
     fcount = font_sans(12, 700)
-    counts = ("48 STORIES  ·  7 REGIONS  ·  NORTH AMERICA 6  ·  EUROPE 11  ·  "
-              "MIDDLE EAST 8  ·  ASIA-PACIFIC 18  ·  LATIN AMERICA 1  ·  SPACE 2  ·  GLOBAL 2")
+    from collections import Counter
+    regions = Counter(s["region"] for s in LEADS + MEDIUM)
+    regions.update(r for (_, _, _, _, r) in BRIEFS)
+    order = ["NORTH AMERICA", "EUROPE", "MIDDLE EAST", "ASIA-PACIFIC",
+             "LATIN AMERICA", "SPACE", "GLOBAL"]
+    counts = ("%d STORIES  ·  %d REGIONS  ·  " % (TOTAL_STORIES, len(regions))
+              + "  ·  ".join("%s %d" % (r, regions[r]) for r in order
+                             if regions[r]))
     tw = d.textlength(counts, font=fcount)
     d.text(((W - tw) / 2, y), counts, font=fcount, fill=RED)
     y += 18
@@ -593,10 +655,10 @@ def render():
         d.text((x + col_w - 8 - lw, ty), lab, font=ftag, fill=BLUE)
         ty += 12
         ty = draw_wrapped(d, tx, ty, s["headline"], fhead, col_w - 16, INK,
-                          leading=18, max_lines=2)
+                          leading=18, max_lines=2, warn_label="lead %d" % s["n"])
         ty += 1
         ty = draw_wrapped(d, tx, ty, s["summary"], fsum, col_w - 16, MUTED,
-                          leading=11, max_lines=2)
+                          leading=11, max_lines=2, warn_label="lead %d" % s["n"])
         fsrc = font_sans(8, 600)
         d.text((tx, y + lead_h - 13), "SOURCE: " + s["source"], font=fsrc,
                fill=FAINT)
@@ -624,9 +686,11 @@ def render():
             d.text((tx, ty), tag, font=ftag, fill=RED)
             ty += 12
             ty = draw_wrapped(d, tx, ty, s["headline"], fmed_head, tw_, INK,
-                              leading=14, max_lines=2)
+                              leading=14, max_lines=2,
+                              warn_label="medium %d" % s["n"])
             ty = draw_wrapped(d, tx, ty, s["summary"], fmed_sum, tw_, MUTED,
-                              leading=11, max_lines=3)
+                              leading=11, max_lines=3,
+                              warn_label="medium %d" % s["n"])
             lab = "%s · %s" % (s["label"], s["source"])
             d.text((tx, yy + med_h - 12), lab, font=font_sans(8, 600),
                    fill=FAINT)
@@ -635,19 +699,20 @@ def render():
     # ---- map
     y = section_head(d, M, y, W - 2 * M, "Where it happened",
                      "PINS 1–16 MATCH THE STORY NUMBERS")
-    map_h = 78
+    map_h = 70
     pins = [(s["n"], s["pin"][0], s["pin"][1]) for s in LEADS + MEDIUM]
     # nudge the two Berlin pins and two Washington pins apart via draw_map
     draw_map(d, (M, y, W - M, y + map_h), pins)
     y += map_h + 6
 
-    # ---- briefs: 4 cols x 8 rows, one line each
+    # ---- briefs: 4 cols x 6 rows, one line each
     y = section_head(d, M, y, W - 2 * M, "Also on 25 November",
-                     "32 MORE STORIES · 17–48")
-    fbrief = font_sans(10, 400)
-    fbrief_n = font_sans(10, 700)
+                     "%d MORE STORIES · %d–%d" % (len(BRIEFS), BRIEFS[0][0],
+                                                  BRIEFS[-1][0]))
+    fbrief = font_sans(9, 400)
+    fbrief_n = font_sans(9, 700)
     fbrief_s = font_sans(8, 600)
-    for row in range(8):
+    for row in range(6):
         for col in range(4):
             n, text, label, source, region = BRIEFS[row * 4 + col]
             x = M + col * (col_w + 8)
@@ -656,46 +721,51 @@ def render():
             nw = d.textlength("%d. " % n, font=fbrief_n)
             sw = d.textlength(source, font=fbrief_s)
             avail = col_w - nw - sw - 10
-            t = trunc(d, text, fbrief, avail)
+            t = trunc(d, text, fbrief, avail, warn_label="brief %d" % n)
             d.text((x + nw, yy), t, font=fbrief, fill=INK)
             d.text((x + col_w - sw, yy), source, font=fbrief_s, fill=FAINT)
-    y += 8 * 12 + 5
+    y += 6 * 12 + 4
 
-    # ---- numbers strip
-    d.rectangle([M, y, W - M, y + 36], fill=INK)
-    fnum_v = font_serif(14)
-    fnum_l = font_sans(8, 600)
-    seg_w = (W - 2 * M) / 5
-    # two rows of five inside the strip: value on top, label below
+    # ---- numbers strip: 6 big cells in one row (value on top, label below)
+    strip_h = 54
+    d.rectangle([M, y, W - M, y + strip_h], fill=INK)
+    fnum_v = font_serif(26)
+    fnum_l = font_sans(9, 600)
+    seg_w = (W - 2 * M) / 6
     for i, (val, lab) in enumerate(NUMBERS):
-        cx = M + (i % 5) * seg_w
-        cy = y + (i // 5) * 18
-        d.text((cx + 8, cy + 2), val, font=fnum_v, fill=(255, 220, 120))
-        vw = d.textlength(val, font=fnum_v)
-        d.text((cx + 12 + vw, cy + 5), lab, font=fnum_l, fill=(220, 215, 200))
-    y += 42
+        cx = M + i * seg_w
+        d.text((cx + 10, y + 3), val, font=fnum_v, fill=(255, 220, 120))
+        d.text((cx + 10, y + 33), lab, font=fnum_l, fill=(220, 215, 200))
+        if i:
+            d.line([(cx, y + 6), (cx, y + strip_h - 6)], fill=(80, 76, 68), width=1)
+    y += strip_h + 4
 
     # ---- timeline + date check side by side
     half = (W - 2 * M - 8) // 2
     y0 = y
-    # left: timeline
+    # left: timeline (7 slots)
     yy = section_head(d, M, y, half, "The day in UTC", "")
     ftime = font_sans(10, 700)
     for t, txt in TIMELINE:
         d.text((M, yy), t, font=ftime, fill=RED)
         d.text((M + 74, yy), txt, font=fbrief, fill=INK)
-        yy += 12
-    # right: date check
+        yy += 11
+    # right: date check (5 left out + 2 "Not yet" lines)
     xr = M + half + 8
     yy2 = section_head(d, xr, y, half, "Date check — left out on purpose", "")
     for title, when in DATE_CHECK[:5]:
         line = "× " + title + " — " + when
-        d.text((xr, yy2), trunc(d, line, fbrief, half - 4), font=fbrief,
+        d.text((xr, yy2), trunc(d, line, fbrief, half - 4,
+                                warn_label="date-check"), font=fbrief,
                fill=MUTED)
-        yy2 += 12
-    d.text((xr, yy2), "Not yet: OPEC+ Sun 29 Nov · Cygnus NG-25 Sun 29 Nov",
+        yy2 += 11
+    d.text((xr, yy2), "Not yet: OPEC+ meeting — Sun 29 Nov · Cygnus NG-25 — Sun 29 Nov",
            font=fbrief_s, fill=FAINT)
-    y = max(yy, yy2) + 10
+    yy2 += 11
+    d.text((xr, yy2), "Not yet: Talbros board decision — Fri 27 Nov",
+           font=fbrief_s, fill=FAINT)
+    yy2 += 11
+    y = max(yy, yy2) + 8
 
     # ---- footer
     d.line([(M, y), (W - M, y)], fill=RULE, width=2)
@@ -709,7 +779,8 @@ def render():
                      max_lines=2)
     y += 3
     fend = font_cond(13)
-    end = spaced("THE WORLD IN ONE DAY  ·  WEDNESDAY 25 NOVEMBER 2026  ·  48 STORIES  ·  END")
+    end = spaced("THE WORLD IN ONE DAY  ·  WEDNESDAY 25 NOVEMBER 2026  ·  %d STORIES  ·  END"
+                 % TOTAL_STORIES)
     tw = d.textlength(end, font=fend)
     d.text(((W - tw) / 2, y), end, font=fend, fill=MUTED)
     y += 15

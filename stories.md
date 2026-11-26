@@ -4,7 +4,7 @@ Researched 25 Nov 2026 ~08:30-09:00 WIB (01:30-02:00 UTC) from Reuters
 summaries, CNBC/SuMarket briefing, BusinessLine, The Germany Eye, ESA, CMSA
 and other outlets. Rule: an item counts only if it happened, or was first
 reported, ON 25 Nov 2026 in some time zone. Everything else is listed under
-DATE CHECK and is NOT in the 48.
+DATE CHECK and is NOT in the 40.
 
 ## Leads (4)
 
@@ -67,7 +67,7 @@ DATE CHECK and is NOT in the 48.
     soldiers in Yemen as forces push toward Aden. REPORTED · The Germany Eye
     · MIDDLE EAST · CONFLICT · pin Aden (45.0, 12.8)
 
-## Briefs (32)
+## Briefs (24)
 
 17. Russia keeps up massive missile attacks on Ukraine — REPORTED · The
     Germany Eye · EUROPE · CONFLICT
@@ -116,40 +116,28 @@ DATE CHECK and is NOT in the 48.
     sangaku-journal · LATIN AMERICA · CONFLICT
 40. Gold ₹1,28,000; Brent $90.70; rupee ₹92.91 — OFFICIAL · BusinessLine ·
     ASIA · MARKETS
-41. Tech Mahindra fixes Nov 30 date for 1:1 bonus shares — REPORTED ·
-    BusinessLine · ASIA · BUSINESS
-42. 63 Moons arm begins ₹1,950-crore payout — REPORTED · OneTrader · ASIA ·
-    BUSINESS
-43. HDB Financial allots ₹992-crore debentures — REPORTED · OneTrader · ASIA
-    · BUSINESS
-44. SJVN's Lower Arun hydro project reaches foundation stage — REPORTED ·
-    OneTrader · ASIA · BUSINESS
-45. Sathlokhar wins two contracts worth ₹291 crore — REPORTED · OneTrader ·
-    ASIA · BUSINESS
-46. ABB India parent buys industrial cooling business — REPORTED ·
-    OneTrader · ASIA · BUSINESS
-47. Hexaware named Challenger in Gartner SIAM ranking — REPORTED · DSIJ ·
-    ASIA · TECH
-48. Talbros board to meet Nov 27 on fundraising — FORECAST · DSIJ · ASIA ·
-    BUSINESS
 
-Totals: 48 stories · 7 regions (NORTH AMERICA 6, EUROPE 11, MIDDLE EAST 8,
-ASIA-PACIFIC 18, LATIN AMERICA 1, SPACE 2, GLOBAL 2) · fields include BUSINESS,
+(v2: briefs 41–48 dropped — eight India-market items — to bring the total
+from 48 to 40, in line with the winning entries' 33–46 range. The rendered
+one-line texts in stories.py are shortened versions of the items above.)
+
+Totals: 40 stories · 7 regions (NORTH AMERICA 6, EUROPE 11, MIDDLE EAST 8,
+ASIA-PACIFIC 10, LATIN AMERICA 1, SPACE 2, GLOBAL 2) · fields include BUSINESS,
 POLITICS, CONFLICT, SPACE, TECH, ENERGY, MARKETS, SCIENCE.
 
 ## The day in numbers
 
 $41bn Sanofi deal · $54.94bn Dell quarter · €1tn German tax forecast ·
-$202bn Dell outlook · $380m Netflix lot · $100m Shein fine · 6m b/d Iraq's
-oil ask · 28 ly 'impossible' star · 00:18 UTC Shenzhou launch · 53 soldiers
-killed in Yemen.
+$202bn Dell outlook · 6m b/d Iraq's oil ask · 53 soldiers killed in Yemen.
 
 ## The day in UTC
 
-- 00:18 UTC — Shenzhou-24 launches from Jiuquan
 - 00:11 UTC — Germany publishes €1tn tax forecast
+- 00:18 UTC — Shenzhou-24 launches from Jiuquan
 - 01:14 UTC — US weighs tariffs on 16 partners, reported
+- 03:45 UTC — India markets reopen after holiday
 - 10:00 UTC — Hera media conference opens in Berlin
+- 14:30 UTC — US markets open; Anthropic below $83 IPO
 - 18:45 UTC — ESA livestreams Hera's first Dimorphos images
 
 ## DATE CHECK — deliberately left out (not 25 November)
@@ -186,3 +174,6 @@ killed in Yemen.
 - Cygnus NG-25 launch to the ISS — Sun 29 Nov
 - Talbros fundraising board decision — Fri 27 Nov
 - Hera science phase — from Apr 2027
+
+(v2: the render shows the first three as two "Not yet" lines next to the
+DATE CHECK box, balancing the seven UTC slots.)
